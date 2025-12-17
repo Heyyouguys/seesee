@@ -15,6 +15,81 @@ const STORAGE_TYPE =
     | 'kvrocks'
     | undefined) || 'localstorage';
 
+// IP 注册速率限制缓存
+interface RateLimitRecord {
+  count: number;
+  firstAttempt: number;
+}
+const registerRateLimitCache = new Map<string, RateLimitRecord>();
+
+// 清理过期的速率限制记录
+function cleanExpiredRateLimitCache(windowMinutes: number) {
+  const now = Date.now();
+  const windowMs = windowMinutes * 60 * 1000;
+  for (const [ip, record] of registerRateLimitCache.entries()) {
+    if (now - record.firstAttempt > windowMs) {
+      registerRateLimitCache.delete(ip);
+    }
+  }
+}
+
+// 获取客户端 IP 地址
+function getClientIP(req: NextRequest): string {
+  // 优先级：X-Forwarded-For > X-Real-IP > CF-Connecting-IP > 直连IP
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    // X-Forwarded-For 可能包含多个IP，取第一个
+    return forwarded.split(',')[0].trim();
+  }
+
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP.trim();
+  }
+
+  const cfIP = req.headers.get('cf-connecting-ip');
+  if (cfIP) {
+    return cfIP.trim();
+  }
+
+  // 如果都没有，返回未知
+  return 'unknown';
+}
+
+// 检查 IP 速率限制
+function checkRateLimit(ip: string, maxCount: number, windowMinutes: number): { allowed: boolean; remainingTime?: number } {
+  const now = Date.now();
+  const windowMs = windowMinutes * 60 * 1000;
+
+  // 先清理过期记录
+  cleanExpiredRateLimitCache(windowMinutes);
+
+  const record = registerRateLimitCache.get(ip);
+
+  if (!record) {
+    // 新IP，记录第一次尝试
+    registerRateLimitCache.set(ip, { count: 1, firstAttempt: now });
+    return { allowed: true };
+  }
+
+  // 检查是否在时间窗口内
+  if (now - record.firstAttempt > windowMs) {
+    // 时间窗口已过，重置记录
+    registerRateLimitCache.set(ip, { count: 1, firstAttempt: now });
+    return { allowed: true };
+  }
+
+  // 在时间窗口内，检查次数
+  if (record.count >= maxCount) {
+    const remainingTime = Math.ceil((windowMs - (now - record.firstAttempt)) / 60000);
+    return { allowed: false, remainingTime };
+  }
+
+  // 增加计数
+  record.count++;
+  return { allowed: true };
+}
+
 // 生成签名
 async function generateSignature(
   data: string,
@@ -80,8 +155,9 @@ export async function POST(req: NextRequest) {
     const { username, password, confirmPassword } = await req.json();
 
     // 先检查配置中是否允许注册（在验证输入之前）
+    let config;
     try {
-      const config = await getConfig();
+      config = await getConfig();
       const allowRegister = config.UserConfig?.AllowRegister !== false; // 默认允许注册
 
       if (!allowRegister) {
@@ -89,6 +165,22 @@ export async function POST(req: NextRequest) {
           { error: '管理员已关闭用户注册功能' },
           { status: 403 }
         );
+      }
+
+      // 检查 IP 速率限制
+      const rateLimitEnabled = config.UserConfig?.RegisterRateLimitEnabled === true;
+      if (rateLimitEnabled) {
+        const clientIP = getClientIP(req);
+        const maxCount = config.UserConfig?.RegisterRateLimitPerIP || 3;
+        const windowMinutes = config.UserConfig?.RegisterRateLimitMinutes || 60;
+
+        const rateLimitResult = checkRateLimit(clientIP, maxCount, windowMinutes);
+        if (!rateLimitResult.allowed) {
+          return NextResponse.json(
+            { error: `注册过于频繁，请在 ${rateLimitResult.remainingTime} 分钟后再试` },
+            { status: 429 }
+          );
+        }
       }
     } catch (err) {
       console.error('检查注册配置失败', err);
@@ -135,21 +227,23 @@ export async function POST(req: NextRequest) {
       // 注册用户
       await db.registerUser(username, password);
 
-      // 重新获取配置来添加用户
-      const config = await getConfig();
+      // 获取客户端 IP
+      const clientIP = getClientIP(req);
 
-      // 检查是否需要审核
-      const requireApproval = config.UserConfig?.RequireApproval === true;
+      // 检查是否需要审核（使用之前获取的 config）
+      const requireApproval = config?.UserConfig?.RequireApproval === true;
 
       const newUser: {
         username: string;
         role: 'user';
         createdAt: number;
+        registerIP?: string;
         pendingApproval?: boolean;
       } = {
         username: username,
         role: 'user' as const,
         createdAt: Date.now(), // 设置注册时间戳
+        registerIP: clientIP, // 记录注册 IP
       };
 
       // 如果需要审核，标记为待审核状态
@@ -157,10 +251,12 @@ export async function POST(req: NextRequest) {
         newUser.pendingApproval = true;
       }
 
-      config.UserConfig.Users.push(newUser);
+      // 刷新配置再添加用户
+      const latestConfig = await getConfig();
+      latestConfig.UserConfig.Users.push(newUser);
 
       // 保存更新后的配置
-      await db.saveAdminConfig(config);
+      await db.saveAdminConfig(latestConfig);
 
       // 清除缓存，确保下次获取配置时是最新的
       clearConfigCache();

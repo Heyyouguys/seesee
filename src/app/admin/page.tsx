@@ -976,6 +976,188 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
               </div>
             )}
 
+            {/* 分隔线 */}
+            <div className='my-6 border-t border-gray-200 dark:border-gray-700'></div>
+
+            {/* 注册安全设置标题 */}
+            <h5 className='text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2'>
+              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' />
+              </svg>
+              注册安全设置
+            </h5>
+
+            {/* 同IP注册速率限制设置 */}
+            <div className='p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 mb-4'>
+              <div className='flex items-center justify-between mb-4'>
+                <div>
+                  <div className='font-medium text-gray-900 dark:text-gray-100'>
+                    同IP注册速率限制
+                  </div>
+                  <div className='text-sm text-gray-600 dark:text-gray-400'>
+                    限制同一IP地址在指定时间内的注册次数，防止恶意批量注册
+                  </div>
+                </div>
+                <div className='flex items-center'>
+                  <button
+                    type="button"
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 ${config.UserConfig.RegisterRateLimitEnabled ? buttonStyles.toggleOn : buttonStyles.toggleOff
+                      }`}
+                    role="switch"
+                    aria-checked={config.UserConfig.RegisterRateLimitEnabled}
+                    onClick={async () => {
+                      await withLoading('toggleRegisterRateLimit', async () => {
+                        try {
+                          const response = await fetch('/api/admin/config', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              ...config,
+                              UserConfig: {
+                                ...config.UserConfig,
+                                RegisterRateLimitEnabled: !config.UserConfig.RegisterRateLimitEnabled
+                              }
+                            })
+                          });
+
+                          if (response.ok) {
+                            await refreshConfig();
+                            showAlert({
+                              type: 'success',
+                              title: '设置已更新',
+                              message: config.UserConfig.RegisterRateLimitEnabled ? '已关闭注册速率限制' : '已开启注册速率限制',
+                              timer: 2000
+                            });
+                          } else {
+                            throw new Error('更新配置失败');
+                          }
+                        } catch (err) {
+                          showError(err instanceof Error ? err.message : '操作失败', showAlert);
+                        }
+                      });
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-5 w-5 rounded-full ${buttonStyles.toggleThumb} shadow transform ring-0 transition duration-200 ease-in-out ${config.UserConfig.RegisterRateLimitEnabled ? buttonStyles.toggleThumbOn : buttonStyles.toggleThumbOff
+                        }`}
+                    />
+                  </button>
+                  <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
+                    {config.UserConfig.RegisterRateLimitEnabled ? '开启' : '关闭'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 速率限制参数设置 */}
+              {config.UserConfig.RegisterRateLimitEnabled && (
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-purple-200 dark:border-purple-700'>
+                  <div className='flex items-center space-x-3'>
+                    <label className='text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap'>
+                      最大注册次数：
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      defaultValue={config.UserConfig.RegisterRateLimitPerIP || 3}
+                      onBlur={async (e) => {
+                        const count = parseInt(e.target.value) || 3;
+                        if (count === (config.UserConfig.RegisterRateLimitPerIP || 3)) {
+                          return;
+                        }
+                        await withLoading('updateRegisterRateLimitPerIP', async () => {
+                          try {
+                            const response = await fetch('/api/admin/config', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                ...config,
+                                UserConfig: {
+                                  ...config.UserConfig,
+                                  RegisterRateLimitPerIP: count
+                                }
+                              })
+                            });
+                            if (response.ok) {
+                              await refreshConfig();
+                              showAlert({
+                                type: 'success',
+                                title: '设置已更新',
+                                message: `已设置为同IP最多注册${count}次`,
+                                timer: 2000
+                              });
+                            } else {
+                              throw new Error('更新失败');
+                            }
+                          } catch (err) {
+                            showAlert({
+                              type: 'error',
+                              title: '更新失败',
+                              message: err instanceof Error ? err.message : '未知错误'
+                            });
+                          }
+                        });
+                      }}
+                      className='w-20 px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
+                    />
+                    <span className='text-sm text-gray-600 dark:text-gray-400'>次</span>
+                  </div>
+                  <div className='flex items-center space-x-3'>
+                    <label className='text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap'>
+                      时间窗口：
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="1440"
+                      defaultValue={config.UserConfig.RegisterRateLimitMinutes || 60}
+                      onBlur={async (e) => {
+                        const minutes = parseInt(e.target.value) || 60;
+                        if (minutes === (config.UserConfig.RegisterRateLimitMinutes || 60)) {
+                          return;
+                        }
+                        await withLoading('updateRegisterRateLimitMinutes', async () => {
+                          try {
+                            const response = await fetch('/api/admin/config', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                ...config,
+                                UserConfig: {
+                                  ...config.UserConfig,
+                                  RegisterRateLimitMinutes: minutes
+                                }
+                              })
+                            });
+                            if (response.ok) {
+                              await refreshConfig();
+                              showAlert({
+                                type: 'success',
+                                title: '设置已更新',
+                                message: `已设置为${minutes}分钟内限制`,
+                                timer: 2000
+                              });
+                            } else {
+                              throw new Error('更新失败');
+                            }
+                          } catch (err) {
+                            showAlert({
+                              type: 'error',
+                              title: '更新失败',
+                              message: err instanceof Error ? err.message : '未知错误'
+                            });
+                          }
+                        });
+                      }}
+                      className='w-20 px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-purple-500'
+                    />
+                    <span className='text-sm text-gray-600 dark:text-gray-400'>分钟</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* 自动清理非活跃用户设置 */}
             <div className='p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700'>
               <div className='flex items-center justify-between mb-4'>
@@ -1524,6 +1706,12 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                   scope='col'
                   className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
                 >
+                  IP信息
+                </th>
+                <th
+                  scope='col'
+                  className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
+                >
                   用户组
                 </th>
                 <th
@@ -1546,18 +1734,20 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                 </th>
               </tr>
             </thead>
-            {/* 按规则排序用户：自己 -> 站长(若非自己) -> 管理员 -> 其他 */}
+            {/* 按规则排序用户：自己 -> 站长(若非自己) -> 管理员 -> 其他，并排除待审核用户 */}
             {(() => {
-              const sortedUsers = [...config.UserConfig.Users].sort((a, b) => {
-                type UserInfo = (typeof config.UserConfig.Users)[number];
-                const priority = (u: UserInfo) => {
-                  if (u.username === currentUsername) return 0;
-                  if (u.role === 'owner') return 1;
-                  if (u.role === 'admin') return 2;
-                  return 3;
-                };
-                return priority(a) - priority(b);
-              });
+              const sortedUsers = [...config.UserConfig.Users]
+                .filter(u => !u.pendingApproval) // 排除待审核用户，只在待审核列表中显示
+                .sort((a, b) => {
+                  type UserInfo = (typeof config.UserConfig.Users)[number];
+                  const priority = (u: UserInfo) => {
+                    if (u.username === currentUsername) return 0;
+                    if (u.role === 'owner') return 1;
+                    if (u.role === 'admin') return 2;
+                    return 3;
+                  };
+                  return priority(a) - priority(b);
+                });
               return (
                 <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
                   {sortedUsers.map((user) => {
@@ -1629,6 +1819,28 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                           >
                             {!user.banned ? '正常' : '已封禁'}
                           </span>
+                        </td>
+                        {/* IP 信息列 */}
+                        <td className='px-6 py-4 whitespace-nowrap'>
+                          <div className='text-xs space-y-1'>
+                            <div className='flex items-center gap-1'>
+                              <span className='text-gray-500 dark:text-gray-400'>注册:</span>
+                              <span className='text-gray-700 dark:text-gray-300 font-mono'>
+                                {user.registerIP || '-'}
+                              </span>
+                            </div>
+                            <div className='flex items-center gap-1'>
+                              <span className='text-gray-500 dark:text-gray-400'>登录:</span>
+                              <span className='text-gray-700 dark:text-gray-300 font-mono'>
+                                {user.lastLoginIP || '-'}
+                              </span>
+                              {user.lastLoginAt && (
+                                <span className='text-gray-400 dark:text-gray-500 ml-1'>
+                                  ({new Date(user.lastLoginAt).toLocaleDateString()})
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <div className='flex items-center space-x-2'>

@@ -1,7 +1,7 @@
 /* eslint-disable no-console,@typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 
-import { getConfig } from '@/lib/config';
+import { clearConfigCache, getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -66,6 +66,29 @@ async function generateAuthCookie(
   }
 
   return encodeURIComponent(JSON.stringify(authData));
+}
+
+// 获取客户端 IP 地址
+function getClientIP(req: NextRequest): string {
+  // 优先级：X-Forwarded-For > X-Real-IP > CF-Connecting-IP > 直连IP
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    // X-Forwarded-For 可能包含多个IP，取第一个
+    return forwarded.split(',')[0].trim();
+  }
+
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP.trim();
+  }
+
+  const cfIP = req.headers.get('cf-connecting-ip');
+  if (cfIP) {
+    return cfIP.trim();
+  }
+
+  // 如果都没有，返回未知
+  return 'unknown';
 }
 
 export async function POST(req: NextRequest) {
@@ -194,6 +217,15 @@ export async function POST(req: NextRequest) {
       ); // 数据库模式不包含 password
       const expires = new Date();
       expires.setDate(expires.getDate() + 7); // 7天过期
+
+      // 更新用户的最后登录 IP 和时间
+      if (user) {
+        const clientIP = getClientIP(req);
+        user.lastLoginIP = clientIP;
+        user.lastLoginAt = Date.now();
+        await db.saveAdminConfig(config);
+        clearConfigCache();
+      }
 
       response.cookies.set('user_auth', cookieValue, {
         path: '/',
