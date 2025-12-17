@@ -1712,6 +1712,12 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                   scope='col'
                   className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
                 >
+                  上次登录
+                </th>
+                <th
+                  scope='col'
+                  className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
+                >
                   用户组
                 </th>
                 <th
@@ -1841,6 +1847,20 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                               )}
                             </div>
                           </div>
+                        </td>
+                        {/* 上次登录时间列 */}
+                        <td className='px-6 py-4 whitespace-nowrap'>
+                          <span className='text-sm text-gray-700 dark:text-gray-300'>
+                            {user.lastLoginAt
+                              ? new Date(user.lastLoginAt).toLocaleString('zh-CN', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                              : '从未登录'}
+                          </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <div className='flex items-center space-x-2'>
