@@ -168,13 +168,13 @@ function RegisterPageClient() {
 
         // 检查是否需要审核
         if (data.pendingApproval) {
-          setSuccess('注册申请已提交，请等待管理员审核');
-          // 5秒后跳转到登录页
-          setTimeout(() => {
-            router.replace('/login');
-          }, 5000);
+          setSuccess('注册申请已提交，请等待管理员审核后再登录');
+          // 清空表单，但不跳转，让用户停留在注册页面
+          setUsername('');
+          setPassword('');
+          setConfirmPassword('');
         } else {
-          // 显示成功消息，稍等一下再跳转
+          // 不需要审核时，显示成功消息并跳转
           setSuccess('注册成功！正在跳转...');
           // 给用户一个成功提示，然后再跳转
           setTimeout(() => {
@@ -372,7 +372,7 @@ function RegisterPageClient() {
           >
             <span className='absolute inset-0 w-full h-full bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000' />
             <UserPlus className='h-5 w-5' />
-            {loading ? '注册中...' : success ? '注册成功，正在跳转...' : '立即注册'}
+            {loading ? '注册中...' : success ? (success.includes('审核') ? '申请已提交' : '注册成功，正在跳转...') : '立即注册'}
           </button>
 
           <div className='mt-6 pt-6 border-t border-gray-200 dark:border-gray-700'>
