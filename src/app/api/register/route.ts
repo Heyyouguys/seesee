@@ -26,12 +26,15 @@ const registerRateLimitCache = new Map<string, RateLimitRecord>();
 function cleanExpiredRateLimitCache(windowMinutes: number) {
   const now = Date.now();
   const windowMs = windowMinutes * 60 * 1000;
-  for (const [ip, record] of registerRateLimitCache.entries()) {
+  const expiredIPs: string[] = [];
+  registerRateLimitCache.forEach((record, ip) => {
     if (now - record.firstAttempt > windowMs) {
-      registerRateLimitCache.delete(ip);
+      expiredIPs.push(ip);
     }
-  }
+  });
+  expiredIPs.forEach(ip => registerRateLimitCache.delete(ip));
 }
+
 
 // 获取客户端 IP 地址
 function getClientIP(req: NextRequest): string {
