@@ -111,6 +111,9 @@ interface AlertModalProps {
   message?: string;
   timer?: number;
   showConfirm?: boolean;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => void;
 }
 
 const AlertModal = ({
@@ -120,7 +123,10 @@ const AlertModal = ({
   title,
   message,
   timer,
-  showConfirm = false
+  showConfirm = false,
+  confirmText = '确定',
+  cancelText,
+  onConfirm
 }: AlertModalProps) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -184,12 +190,28 @@ const AlertModal = ({
           )}
 
           {showConfirm && (
-            <button
-              onClick={onClose}
-              className={`px-4 py-2 text-sm font-medium ${buttonStyles.primary}`}
-            >
-              确定
-            </button>
+            <div className="flex justify-center space-x-3">
+              {cancelText && (
+                <button
+                  onClick={onClose}
+                  className={`px-4 py-2 text-sm font-medium ${buttonStyles.secondary}`}
+                >
+                  {cancelText}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (onConfirm) {
+                    onConfirm();
+                  } else {
+                    onClose();
+                  }
+                }}
+                className={`px-4 py-2 text-sm font-medium ${type === 'warning' ? buttonStyles.warning : type === 'error' ? buttonStyles.danger : buttonStyles.primary}`}
+              >
+                {confirmText}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -207,6 +229,9 @@ const useAlertModal = () => {
     message?: string;
     timer?: number;
     showConfirm?: boolean;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
   }>({
     isOpen: false,
     type: 'success',
