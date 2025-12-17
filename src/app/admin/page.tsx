@@ -2960,6 +2960,9 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
         message={alertModal.message}
         timer={alertModal.timer}
         showConfirm={alertModal.showConfirm}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+        onConfirm={alertModal.onConfirm}
       />
 
 
@@ -4040,6 +4043,9 @@ const VideoSourceConfig = ({
         message={alertModal.message}
         timer={alertModal.timer}
         showConfirm={alertModal.showConfirm}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+        onConfirm={alertModal.onConfirm}
       />
 
       {/* 批量操作确认弹窗 */}
@@ -4451,6 +4457,9 @@ const CategoryConfig = ({
         message={alertModal.message}
         timer={alertModal.timer}
         showConfirm={alertModal.showConfirm}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+        onConfirm={alertModal.onConfirm}
       />
     </div>
   );
@@ -4686,6 +4695,9 @@ const ConfigFileComponent = ({ config, refreshConfig }: { config: AdminConfig | 
         message={alertModal.message}
         timer={alertModal.timer}
         showConfirm={alertModal.showConfirm}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+        onConfirm={alertModal.onConfirm}
       />
     </div>
   );
@@ -5366,6 +5378,9 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
         message={alertModal.message}
         timer={alertModal.timer}
         showConfirm={alertModal.showConfirm}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+        onConfirm={alertModal.onConfirm}
       />
     </div>
   );
@@ -5920,6 +5935,9 @@ const LiveSourceConfig = ({
         message={alertModal.message}
         timer={alertModal.timer}
         showConfirm={alertModal.showConfirm}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+        onConfirm={alertModal.onConfirm}
       />
 
 
@@ -6169,6 +6187,9 @@ const NetDiskConfig = ({
         message={alertModal.message}
         timer={alertModal.timer}
         showConfirm={alertModal.showConfirm}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+        onConfirm={alertModal.onConfirm}
       />
     </div>
   );
@@ -6579,6 +6600,9 @@ function AdminPageClient() {
         message={alertModal.message}
         timer={alertModal.timer}
         showConfirm={alertModal.showConfirm}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+        onConfirm={alertModal.onConfirm}
       />
 
       {/* 重置配置确认弹窗 */}
