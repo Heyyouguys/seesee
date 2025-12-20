@@ -386,8 +386,8 @@ const AIRecommendConfig = ({ config, refreshConfig }: AIRecommendConfigProps) =>
                     onClick={fetchModels}
                     disabled={isLoadingModels || !aiSettings.apiUrl.trim() || !aiSettings.apiKey.trim()}
                     className={`px-3 py-2 text-sm rounded-lg border transition-colors ${isLoadingModels || !aiSettings.apiUrl.trim() || !aiSettings.apiKey.trim()
-                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-600'
-                        : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-600'
+                      : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/50'
                       }`}
                   >
                     {isLoadingModels ? '获取中...' : '🔄 从API获取模型列表'}
@@ -442,6 +442,22 @@ const AIRecommendConfig = ({ config, refreshConfig }: AIRecommendConfigProps) =>
                       }}
                       className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
                     >
+                      {/* 当前选择的模型（如果不在其他列表中，确保它作为选项存在） */}
+                      {(() => {
+                        const currentModel = aiSettings.model;
+                        const inFetchedModels = fetchedModels.includes(currentModel);
+                        const inModelExamples = MODEL_EXAMPLES.some(example => example.split(' (')[0] === currentModel);
+                        // 如果当前模型不在任何列表中，显示为当前选择
+                        if (currentModel && !inFetchedModels && !inModelExamples) {
+                          return (
+                            <optgroup label="🎯 当前选择">
+                              <option value={currentModel}>{currentModel}</option>
+                            </optgroup>
+                          );
+                        }
+                        return null;
+                      })()}
+
                       {/* 从API获取的模型 */}
                       {fetchedModels.length > 0 && (
                         <optgroup label="📡 从API获取的模型">
