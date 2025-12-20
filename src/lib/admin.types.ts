@@ -90,6 +90,7 @@ export interface AdminConfig {
     model: string;                       // 模型名称
     temperature: number;                 // 温度参数 0-2
     maxTokens: number;                   // 最大token数
+    cachedModels?: string[];             // 缓存的模型列表（从API获取后保存）
   };
   YouTubeConfig?: {
     enabled: boolean;                    // 是否启用YouTube搜索功能

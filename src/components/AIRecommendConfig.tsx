@@ -59,6 +59,10 @@ const AIRecommendConfig = ({ config, refreshConfig }: AIRecommendConfigProps) =>
         temperature: config.AIRecommendConfig.temperature ?? 0.7,
         maxTokens: config.AIRecommendConfig.maxTokens ?? 3000
       });
+      // 从配置中加载已缓存的模型列表
+      if (config.AIRecommendConfig.cachedModels && config.AIRecommendConfig.cachedModels.length > 0) {
+        setFetchedModels(config.AIRecommendConfig.cachedModels);
+      }
     }
   }, [config]);
 
@@ -159,7 +163,11 @@ const AIRecommendConfig = ({ config, refreshConfig }: AIRecommendConfigProps) =>
       const response = await fetch('/api/admin/ai-recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(aiSettings)
+        body: JSON.stringify({
+          ...aiSettings,
+          // 保存当前获取的模型列表到缓存
+          cachedModels: fetchedModels.length > 0 ? fetchedModels : undefined
+        })
       });
 
       if (!response.ok) {

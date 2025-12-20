@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   }
 
   const authInfo = getAuthInfoFromCookie(request);
-  
+
   // 检查用户权限
   if (!authInfo || !authInfo.username) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const aiRecommendConfig = await request.json();
-    
+
     // 验证配置数据
     if (typeof aiRecommendConfig.enabled !== 'boolean') {
       return NextResponse.json({ error: 'Invalid enabled value' }, { status: 400 });
@@ -59,25 +59,25 @@ export async function POST(request: NextRequest) {
       // 验证和优化API地址格式
       try {
         const apiUrl = aiRecommendConfig.apiUrl.trim();
-        
+
         // 验证URL格式
         new URL(apiUrl);
-        
+
         // 智能提示：检查是否可能缺少/v1后缀
-        if (!apiUrl.endsWith('/v1') && 
-            !apiUrl.includes('/chat/completions') && 
-            !apiUrl.includes('/api/paas/v4') && // 智谱AI例外
-            !apiUrl.includes('/compatible-mode/v1') && // 通义千问例外
-            !apiUrl.includes('/rpc/2.0/ai_custom/v1')) { // 百度文心例外
-          
+        if (!apiUrl.endsWith('/v1') &&
+          !apiUrl.includes('/chat/completions') &&
+          !apiUrl.includes('/api/paas/v4') && // 智谱AI例外
+          !apiUrl.includes('/compatible-mode/v1') && // 通义千问例外
+          !apiUrl.includes('/rpc/2.0/ai_custom/v1')) { // 百度文心例外
+
           // 记录可能的配置问题，但不阻止保存
           if (process.env.NODE_ENV === 'development') {
             console.warn(`API地址可能缺少/v1后缀: ${apiUrl}`);
           }
         }
-        
+
       } catch (error) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: 'API地址格式不正确',
           hint: '请输入完整的API地址，如 https://api.openai.com/v1'
         }, { status: 400 });
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     // 获取当前配置
     const adminConfig = await getConfig();
-    
+
     // 权限校验
     if (username !== process.env.USERNAME) {
       // 管理员
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: '权限不足' }, { status: 401 });
       }
     }
-    
+
     // 更新AI推荐配置
     adminConfig.AIRecommendConfig = {
       enabled: aiRecommendConfig.enabled,
@@ -105,12 +105,16 @@ export async function POST(request: NextRequest) {
       apiKey: aiRecommendConfig.apiKey?.trim() || '',
       model: aiRecommendConfig.model?.trim() || 'gpt-3.5-turbo',
       temperature: aiRecommendConfig.temperature ?? 0.7,
-      maxTokens: aiRecommendConfig.maxTokens ?? 2000
+      maxTokens: aiRecommendConfig.maxTokens ?? 2000,
+      // 保存缓存的模型列表（如果提供了新的列表则更新，否则保留原有的）
+      cachedModels: Array.isArray(aiRecommendConfig.cachedModels)
+        ? aiRecommendConfig.cachedModels
+        : (adminConfig.AIRecommendConfig?.cachedModels || [])
     };
 
     // 保存配置到数据库
     await db.saveAdminConfig(adminConfig);
-    
+
     // 清除配置缓存，强制下次重新从数据库读取
     clearConfigCache();
 
@@ -122,8 +126,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Save AI recommend config error:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Internal server error' 
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Internal server error'
     }, { status: 500 });
   }
 }
