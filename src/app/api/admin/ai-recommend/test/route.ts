@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   const authInfo = getAuthInfoFromCookie(request);
-  
+
   // 检查用户权限
   if (!authInfo || !authInfo.username) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
 
     // 验证参数
     if (!apiUrl || !apiKey) {
-      return NextResponse.json({ 
-        error: '请提供API地址和密钥' 
+      return NextResponse.json({
+        error: '请提供API地址和密钥'
       }, { status: 400 });
     }
 
@@ -43,17 +43,20 @@ export async function POST(request: NextRequest) {
     ];
 
     // 调用AI API进行测试
-    const testUrl = apiUrl.endsWith('/chat/completions') 
-      ? apiUrl 
+    const testUrl = apiUrl.endsWith('/chat/completions')
+      ? apiUrl
       : `${apiUrl.replace(/\/$/, '')}/chat/completions`;
 
     console.log('Testing AI API:', testUrl);
-    
+
     const response = await fetch(testUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
       },
       body: JSON.stringify({
         model: model || 'gpt-3.5-turbo',
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       let errorMessage = 'API连接失败';
-      
+
       try {
         const errorData = JSON.parse(errorText);
         if (errorData.error) {
@@ -75,44 +78,44 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
-      
+
       console.error('AI API Test Error:', errorText);
-      return NextResponse.json({ 
-        error: errorMessage 
+      return NextResponse.json({
+        error: errorMessage
       }, { status: 400 });
     }
 
     const result = await response.json();
-    
+
     // 检查返回结果格式
     if (!result.choices || result.choices.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'API返回无choices数据',
         rawResponse: JSON.stringify(result).substring(0, 500)
       }, { status: 400 });
     }
 
     if (!result.choices[0] || !result.choices[0].message) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'API返回choices格式异常',
         rawResponse: JSON.stringify(result).substring(0, 500)
       }, { status: 400 });
     }
 
     const testReply = result.choices[0].message.content;
-    
+
     // 检查内容是否为空
     if (!testReply || testReply.trim() === '') {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: '⚠️ API返回了空内容！这就是导致空回复的原因',
         details: '这表明AI模型返回了空回复，可能原因：\n1. 模型参数配置问题\n2. API密钥权限问题\n3. 模型服务异常',
         rawResponse: JSON.stringify(result).substring(0, 500),
         success: false
       }, { status: 400 });
     }
-    
-    return NextResponse.json({ 
-      success: true, 
+
+    return NextResponse.json({
+      success: true,
       message: '✅ 测试成功 - AI配置正常',
       testReply: testReply,
       model: result.model || model,
@@ -126,7 +129,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('AI API test error:', error);
-    
+
     let errorMessage = '连接测试失败';
     if (error instanceof Error) {
       if (error.message.includes('fetch')) {
@@ -137,9 +140,9 @@ export async function POST(request: NextRequest) {
         errorMessage = error.message;
       }
     }
-    
-    return NextResponse.json({ 
-      error: errorMessage 
+
+    return NextResponse.json({
+      error: errorMessage
     }, { status: 500 });
   }
 }

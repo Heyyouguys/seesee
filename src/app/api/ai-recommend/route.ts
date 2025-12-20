@@ -22,7 +22,7 @@ interface ChatRequest {
 export async function POST(request: NextRequest) {
   try {
     const authInfo = getAuthInfoFromCookie(request);
-    
+
     // 检查用户权限
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -66,8 +66,8 @@ export async function POST(request: NextRequest) {
 
     // 检查API配置是否完整
     if (!aiConfig.apiKey || !aiConfig.apiUrl) {
-      return NextResponse.json({ 
-        error: 'AI推荐功能配置不完整，请联系管理员' 
+      return NextResponse.json({
+        error: 'AI推荐功能配置不完整，请联系管理员'
       }, { status: 500 });
     }
 
@@ -75,22 +75,22 @@ export async function POST(request: NextRequest) {
 
     // 验证请求格式
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ 
-        error: 'Invalid messages format' 
+      return NextResponse.json({
+        error: 'Invalid messages format'
       }, { status: 400 });
     }
 
     // 优化缓存策略 - 只对简单的单轮问答进行短时缓存
     let cacheKey: string | null = null;
     let cachedResponse = null;
-    
+
     // 只有在单轮对话且消息较短时才使用缓存，避免过度缓存复杂对话
     if (messages.length === 1 && messages[0].role === 'user' && messages[0].content.length < 50) {
       const questionHash = Buffer.from(messages[0].content.trim().toLowerCase()).toString('base64').slice(0, 16);
       cacheKey = `ai-recommend-simple-${questionHash}`;
       cachedResponse = await db.getCache(cacheKey);
     }
-    
+
     if (cachedResponse) {
       return NextResponse.json(cachedResponse);
     }
@@ -101,15 +101,15 @@ export async function POST(request: NextRequest) {
     const lastYear = currentYear - 1;
     const randomElements = [
       '尝试推荐一些不同类型的作品',
-      '可以包含一些经典和新作品的混合推荐', 
+      '可以包含一些经典和新作品的混合推荐',
       '考虑推荐一些口碑很好的作品',
       '可以推荐一些最近讨论度比较高的作品'
     ];
     const randomHint = randomElements[Math.floor(Math.random() * randomElements.length)];
-    
+
     // 获取最后一条用户消息用于分析
     const userMessage = messages[messages.length - 1]?.content || '';
-    
+
     // 检测用户消息中的YouTube链接
     const detectVideoLinks = (content: string) => {
       const youtubePattern = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]+)/g;
@@ -136,10 +136,10 @@ export async function POST(request: NextRequest) {
     // 构建功能列表和详细说明
     const capabilities = ['影视剧推荐'];
     let youtubeSearchStatus = '';
-    
+
     // 视频链接解析功能（所有用户可用）
     capabilities.push('YouTube视频链接解析');
-    
+
     // YouTube推荐功能状态判断
     if (youtubeEnabled && youtubeConfig.apiKey) {
       capabilities.push('YouTube视频搜索推荐');
@@ -160,9 +160,9 @@ export async function POST(request: NextRequest) {
 ## 判断用户需求：
 - 如果用户发送了YouTube链接 → 使用视频链接解析功能
 - 如果用户想要新闻、教程、音乐、娱乐视频等内容：
-  ${youtubeEnabled && youtubeConfig.apiKey ? 
-    '→ 使用YouTube推荐功能' : 
-    '→ 告知用户"YouTube搜索功能暂不可用，请联系管理员配置YouTube API Key"'}
+  ${youtubeEnabled && youtubeConfig.apiKey ?
+        '→ 使用YouTube推荐功能' :
+        '→ 告知用户"YouTube搜索功能暂不可用，请联系管理员配置YouTube API Key"'}
 - 如果用户想要电影、电视剧、动漫等影视内容 → 使用影视推荐功能
 - 其他无关内容 → 直接拒绝回答
 
@@ -186,7 +186,7 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
 - ${randomHint}
 - 重点推荐${currentYear}年的最新作品
 - 可以包含${lastYear}年的热门作品
-- 避免推荐${currentYear-2}年以前的老作品，除非是经典必看
+- 避免推荐${currentYear - 2}年以前的老作品，除非是经典必看
 - 推荐内容要具体，包含作品名称、年份、类型、推荐理由
 - 每次回复尽量提供一些新的角度或不同的推荐
 - 避免推荐过于小众或难以找到的内容
@@ -210,14 +210,14 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
     // 使用配置中的参数或请求参数
     const requestModel = model || aiConfig.model;
     let tokenLimit = max_tokens || max_completion_tokens || aiConfig.maxTokens;
-    
+
     // 判断是否是需要使用max_completion_tokens的模型
     // o系列推理模型(o1,o3,o4等)和GPT-5系列使用max_completion_tokens
-    const useMaxCompletionTokens = requestModel.startsWith('o1') || 
-                                  requestModel.startsWith('o3') || 
-                                  requestModel.startsWith('o4') ||
-                                  requestModel.includes('gpt-5');
-    
+    const useMaxCompletionTokens = requestModel.startsWith('o1') ||
+      requestModel.startsWith('o3') ||
+      requestModel.startsWith('o4') ||
+      requestModel.includes('gpt-5');
+
     // 根据搜索结果优化token限制，避免空回复
     if (useMaxCompletionTokens) {
       // 推理模型需要更高的token限制
@@ -238,17 +238,17 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
         tokenLimit = Math.min(tokenLimit, 32768); // GPT-4系列最大32k tokens
       }
     }
-    
+
     const requestBody: any = {
       model: requestModel,
       messages: chatMessages,
     };
-    
+
     // 推理模型不支持某些参数
     if (!useMaxCompletionTokens) {
       requestBody.temperature = temperature ?? aiConfig.temperature;
     }
-    
+
     // 根据模型类型使用正确的token限制参数
     if (useMaxCompletionTokens) {
       requestBody.max_completion_tokens = tokenLimit;
@@ -260,13 +260,16 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
     }
 
     // 调用AI API
-    const openaiResponse = await fetch(aiConfig.apiUrl.endsWith('/chat/completions') 
-      ? aiConfig.apiUrl 
+    const openaiResponse = await fetch(aiConfig.apiUrl.endsWith('/chat/completions')
+      ? aiConfig.apiUrl
       : `${aiConfig.apiUrl.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${aiConfig.apiKey}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
       },
       body: JSON.stringify(requestBody),
     });
@@ -274,11 +277,11 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
     if (!openaiResponse.ok) {
       const errorData = await openaiResponse.text();
       console.error('OpenAI API Error:', errorData);
-      
+
       // 提供更详细的错误信息
       let errorMessage = 'AI服务暂时不可用，请稍后重试';
       let errorDetails = '';
-      
+
       try {
         const parsedError = JSON.parse(errorData);
         if (parsedError.error?.message) {
@@ -287,7 +290,7 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
       } catch {
         errorDetails = errorData.substring(0, 200); // 限制错误信息长度
       }
-      
+
       // 根据HTTP状态码提供更具体的错误信息
       if (openaiResponse.status === 401) {
         errorMessage = 'API密钥无效，请联系管理员检查配置';
@@ -298,8 +301,8 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
       } else if (openaiResponse.status >= 500) {
         errorMessage = 'AI服务器错误，请稍后重试';
       }
-      
-      return NextResponse.json({ 
+
+      return NextResponse.json({
         error: errorMessage,
         details: errorDetails,
         status: openaiResponse.status
@@ -307,23 +310,23 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
     }
 
     const aiResult = await openaiResponse.json();
-    
+
     // 检查AI响应的完整性
     if (!aiResult.choices || aiResult.choices.length === 0 || !aiResult.choices[0].message) {
       console.error('AI响应格式异常:', aiResult);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'AI服务响应格式异常，请稍后重试',
         details: `响应结构异常: ${JSON.stringify(aiResult).substring(0, 200)}...`
       }, { status: 500 });
     }
-    
+
     const aiContent = aiResult.choices[0].message.content;
-    
+
     // 处理视频链接解析
     if (hasVideoLinks) {
       try {
         const parsedVideos = await handleVideoLinkParsing(videoLinks);
-        
+
         // 构建返回格式
         const response = {
           id: aiResult.id || `chatcmpl-${Date.now()}`,
@@ -358,7 +361,7 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
         // 解析失败时继续正常流程
       }
     }
-    
+
     // 检查内容是否为空
     if (!aiContent || aiContent.trim() === '') {
       console.error('AI返回空内容:', {
@@ -368,10 +371,10 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
         choices: aiResult.choices,
         usage: aiResult.usage
       });
-      
+
       let errorMessage = 'AI返回了空回复';
       let errorDetails = '';
-      
+
       if (useMaxCompletionTokens) {
         // 推理模型特殊处理
         if (tokenLimit < 1000) {
@@ -390,8 +393,8 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
           errorDetails = '建议：请尝试更详细地描述您想要的影视类型或心情，或联系管理员检查AI配置';
         }
       }
-      
-      return NextResponse.json({ 
+
+      return NextResponse.json({
         error: errorMessage,
         details: errorDetails,
         modelInfo: {
@@ -401,15 +404,15 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
         }
       }, { status: 500 });
     }
-    
+
     // 检测是否为YouTube视频推荐（参考alpha逻辑）
     const isYouTubeRecommendation = youtubeEnabled && youtubeConfig.apiKey && aiContent.includes('【') && aiContent.includes('】');
-    
+
     if (isYouTubeRecommendation) {
       try {
         const searchKeywords = extractYouTubeSearchKeywords(aiContent);
         const youtubeVideos = await searchYouTubeVideos(searchKeywords, youtubeConfig);
-        
+
         // 构建YouTube推荐响应
         const response = {
           id: aiResult.id || `chatcmpl-${Date.now()}`,
@@ -444,10 +447,10 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
         // 推荐失败时继续正常流程
       }
     }
-    
+
     // 提取结构化推荐信息
     const recommendations = extractRecommendations(aiContent);
-    
+
     // 构建返回格式
     const response = {
       id: aiResult.id || `chatcmpl-${Date.now()}`,
@@ -496,11 +499,11 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
 
   } catch (error) {
     console.error('AI推荐API错误:', error);
-    
+
     // 提供更详细的错误信息
     let errorMessage = '服务器内部错误';
     let errorDetails = '';
-    
+
     if (error instanceof Error) {
       if (error.message.includes('fetch')) {
         errorMessage = '无法连接到AI服务，请检查网络连接';
@@ -515,8 +518,8 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
         errorDetails = error.message;
       }
     }
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       error: errorMessage,
       details: errorDetails
     }, { status: 500 });
@@ -527,7 +530,7 @@ ${youtubeEnabled && youtubeConfig.apiKey ? `### YouTube推荐格式：
 export async function GET(request: NextRequest) {
   try {
     const authInfo = getAuthInfoFromCookie(request);
-    
+
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -543,8 +546,8 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('获取AI推荐历史错误:', error);
-    return NextResponse.json({ 
-      error: '获取历史记录失败' 
+    return NextResponse.json({
+      error: '获取历史记录失败'
     }, { status: 500 });
   }
 }
@@ -552,12 +555,12 @@ export async function GET(request: NextRequest) {
 // 视频链接解析处理函数
 async function handleVideoLinkParsing(videoLinks: any[]) {
   const parsedVideos = [];
-  
+
   for (const link of videoLinks) {
     try {
       // 使用YouTube oEmbed API获取视频信息（公开，无需API Key）
       const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${link.videoId}&format=json`);
-      
+
       if (response.ok) {
         const videoInfo = await response.json();
         parsedVideos.push({
@@ -592,7 +595,7 @@ async function handleVideoLinkParsing(videoLinks: any[]) {
       });
     }
   }
-  
+
   return parsedVideos;
 }
 
@@ -632,7 +635,7 @@ async function searchYouTubeVideos(keywords: string[], youtubeConfig: any) {
       searchUrl.searchParams.set('order', 'relevance');
 
       const response = await fetch(searchUrl.toString());
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.items && data.items.length > 0) {
